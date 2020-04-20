@@ -34,6 +34,7 @@ def _strcmd(cmd):
     """
     return subprocess.getstatusoutput(cmd)
 
+
 def _generate_tor_hash(password):
     """Python implementation of Tor's password hashing OpenPGP S2K algorithm
     Inspired by : https://gist.github.com/antitree/3962751
@@ -42,10 +43,10 @@ def _generate_tor_hash(password):
     secret = bytes(password, 'ascii')
     indicator = bytes(chr(96), 'ascii')
     salt = b"".join([os.urandom(8), indicator])
-    
+
     c = 96
     EXPBIAS = 6
-    count = (16+(c&15)) << ((c>>4) + EXPBIAS)
+    count = (16+(c & 15)) << ((c >> 4) + EXPBIAS)
 
     d = hashlib.sha1()
     tmp = salt[:8]+secret
@@ -184,9 +185,11 @@ class Totoro:
 
         return self._service['status']
 
-    def start(self, socks_port=9050, control_port=9051, tor_binary=None):
+    def start(self, socks_port=9050, control_port=9051,
+              tor_binary=None, password=None):
         """Starts a Tor process locally with given port numbers.
-        The controller is protected by randomly chosen password.
+        The controller is protected by randomly chosen password, or by
+        given password in parameter.
         In practice you must use the start() OR connect() method, not both.
 
         If tor_binary is given, this will use this binary to request the hash
@@ -194,9 +197,16 @@ class Totoro:
         using the OpenPGP S2K algorithm.
         """
 
-        # Generate a random password for the controller
-        chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-        password = ''.join(random.choice(chars) for i in range(25))
+        if password is not None and (
+                type(password) is not str or not len(password)):
+            raise TotoroException('Password must be a non empty string')
+
+        if password is None:
+            # Generate a random password for the controller
+            chars = 'abcdefghijklmnopqrstuvwxyz'
+            chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            chars += '0123456789'
+            password = ''.join(random.choice(chars) for i in range(25))
 
         # Compute the Hash of the password
         hashed = None
