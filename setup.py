@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="totororequests-ray0be",
+    name="totororequests",
     version="1.0.0",
     author="Victor Paynat-Sautivet",
     author_email="contact@ray0.be",
