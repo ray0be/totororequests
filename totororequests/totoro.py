@@ -387,7 +387,7 @@ class Totoro:
         headers['User-Agent'] = fake_useragent.UserAgent().random
 
         # Send
-        response = sess.request(
+        resp = sess.request(
             method, url,
             params=params, data=data, json=json, files=files,
             headers=headers, cookies=cookies,
@@ -396,13 +396,13 @@ class Totoro:
             proxies=proxies, verify=verify
         )
 
-        return sess, response
+        return sess, resp
 
-    def dirreq(self, *args, **kwds):
+    def dirreq(self, *args, **kwargs):
         """An alias to _send_request. Performs a direct request."""
-        return self._send_request(*args, **kwds)
+        return self._send_request(*args, **kwargs)
 
-    def torreq(self, *args, **kwds):
+    def torreq(self, *args, **kwargs):
         """Performs a request through Tor network."""
         if not self._service['status'] and not self.status():
             raise TorNotRunningTotoroException(
@@ -414,7 +414,35 @@ class Totoro:
             'https': 'socks5://' + self._host + ':' + str(self._service['port'])
         }
 
-        return self._send_request(proxies=proxies, *args, **kwds)
+        return self._send_request(*args, **kwargs, proxies=proxies)
+
+    def get(self, *args, **kwargs):
+        """Sends a GET request"""
+        return self.torreq('GET', *args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        """Sends a POST request"""
+        return self.torreq('POST', *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        """Sends a PUT request"""
+        return self.torreq('PUT', *args, **kwargs)
+
+    def patch(self, *args, **kwargs):
+        """Sends a PATCH request"""
+        return self.torreq('PATCH', *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Sends a DELETE request"""
+        return self.torreq('DELETE', *args, **kwargs)
+
+    def options(self, *args, **kwargs):
+        """Sends an OPTIONS request"""
+        return self.torreq('OPTIONS', *args, **kwargs)
+
+    def head(self, *args, **kwargs):
+        """Sends a HEAD request"""
+        return self.torreq('HEAD', *args, **kwargs)
 
     # =======================================================================
     #       TOR CONTROLLER
