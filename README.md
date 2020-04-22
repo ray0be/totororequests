@@ -1,7 +1,9 @@
 # Totoro
 Totoro is a simple Python module for sending HTTP(S) requests through Tor network.
 
-It provides a way to create a Tor subprocess or connect to an existing Tor running service, and supports all controller authentication methods (noauth, socket, cookie and password).
+It provides a way to create a parallel Tor process or connect to an existing Tor running service, and supports all controller authentication methods (none, socket, cookie and password).
+
+Basically it adds an abstract layer on top of the *stem* module and combines it with *requests*.
 
 **Requirements** :
 
@@ -9,6 +11,7 @@ It provides a way to create a Tor subprocess or connect to an existing Tor runni
  - Python dependencies : [requests](https://requests.readthedocs.io), [stem](https://stem.torproject.org), [fake_useragent](https://pypi.org/project/fake-useragent/)
 
 **Tested on** : Kali 2020.1
+
 **License** : MIT
 
 ## Getting started
@@ -18,13 +21,10 @@ Ensure you have Tor installed on your system :
  - Debian based : `apt install tor`
  - Fedora based : `yum install tor`
 
-Then install Totoro : 
+Then install Totoro : `pip install totororequests`
 
-> TODO
-`pip install [===>SOON<===]`
-
-### Example #1 : run a Tor subprocess
-In this example we use Totoro in the easiest way. Totoro will run Tor in a new subprocess and generate a random password to protect its controller from being accessed outside the Python script context.
+### Example #1 : run a Tor process
+In this example we use Totoro in the easiest way. Totoro will run Tor in a new process and generate a random password to protect the controller from being accessed outside the Python script context.
 ```python
 #!/usr/bin/env python3
 
@@ -33,7 +33,7 @@ from totororequests import Totoro
 # Get Totoro
 toro = Totoro(nowarning=True)
 
-# Start Tor subprocess
+# Start Tor process
 if toro.start():
     print('Tor is running')
 
@@ -61,88 +61,315 @@ if toro.stop():
 ### Example #2 : connect to a running Tor instance
 In this example we connect Totoro to a running instance of Tor, potentially not on the same host. If you want to change your public IP address later, you'll need to authenticate to the controller (see the associated section).
 ```python
-# Todo
+#!/usr/bin/env python3
+
+from totororequests import Totoro
+
+toro = Totoro(nowarning=True)
+
+# Connect to Tor already-running service
+if toro.connect(host='127.0.0.1', port=9050):
+    print('Successfully connected')
+
+# Authenticate to the controller
+authok = toro.authenticate(method='password', port=9051, password='PASSWORD')
+if authok:
+    print('Successfully authenticated')
+
+# Send a request over Tor network
+sess, resp = toro.torreq('GET', 'https://google.com')
+
+# Request a new identity
+if authok:
+    change_identity(sync=True)
+
+# Send another request over Tor network (with new identity)
+sess, resp = toro.torreq('GET', 'https://google.com')
 ```
 
-> TODO
+## Send requests
+Totoro is just a wrapper around the [requests](https://2.python-requests.org/en/latest/user/quickstart/) library.
+
+To send a request over Tor network, you may use these nice methods :
+```python
+# toro.get()
+# toro.post()
+# toro.put()
+# toro.delete()
+# toro.patch()
+# toro.head()
+# toro.options()
+
+# Example :
+sess, resp = toro.post('https://example.com/login', data={'username':'admin', 'password':'admin'})
+```
+As you can see, the method returns a tuple with a **Session** object (`sess`) and a **Response** object (`resp`).
+
+The `resp` variable is what you want, it contains the headers of the response and its content.
+
+The `sess` variable is useful because you can reuse it for a later request. A Session object allows you to persist certain parameters across requests ([read more](https://requests.readthedocs.io/en/master/user/advanced/#session-objects)) :
+```python
+sess, resp2 = toro.get('https://example.com/admin', session=sess)
+```
+Doing that you will reuse the Cookies (for instance) you got from the previous request on /login.
 
 ## Authenticate to the Controller
-As a client, it is possible to control the Tor's behavior. Totoro let you request a new identity (= a new IP address), but you must authenticate to the Tor Controller in order to do that.
+As a client, it is possible to control Tor's behavior. Totoro lets you request a new identity (= a new IP address), but you must authenticate to the Tor Controller in order to do that.
 
 Two options :
 
- - You have started a Tor subprocess with the **start()** method : in that case you have nothing to do, Totoro has already authenticated to the created controller. It means you can call **change_identity()**.
- - You have connected to an already running instance of Tor using **connect()** : before requesting a new identity you must follow the below steps.
+ - You have started a Tor process with the **start()** method (like in Example#1) : in that case you have nothing to do, Totoro is already authenticated to the new controller. It means you can call **change_identity()**.
+ - You have connected to an already running instance of Tor using **connect()** (like in Example#2): before requesting a new identity you must follow the steps below.
 
-The controller has different authentication methods. Totoro supports all.
-Depending on your **torrc** configuration, follow the appropriate section.
+The controller may be configured in different ways. Totoro supports all the authentication methods.
+Depending on your [**torrc** configuration](https://manpages.debian.org/stretch/tor/torrc.5.en.html), follow the appropriate section.
 
 ### Auth : None
 
-> TODO
+If your Tor Controller has opened a Control port with no authentication, like this (**torrc**) :
+```
+ControlPort 9051
+```
+You can authenticate this way :
+```python
+toro.authenticate(method=None, port=9051)
+```
 
 ### Auth : (Safe)Cookie
 
-> TODO
+If your Tor Controller uses (safe)Cookie authentication, when starting Tor a cookie file will be created, generally with 600 rights. This means you should run your Python script with the same user you started Tor, or you'll run into problems. Here is the standard configuration for Cookie auth (**torrc**) :
+```
+ControlPort 9051
+CookieAuthentication 1
+CookieAuthFile /home/user/.tor/control.authcookie
+```
+And you authenticate with Totoro like that :
+```python
+toro.authenticate(method='cookie', port=9051)
+```
 
 ### Auth : Password
 
-> TODO
+If you use Password authentication, you must provide a password in order to authenticate to the controller. In the **torrc** configuration, you need the Hash of the password, obtained with the OpenPGP S2K algorithm :
+```
+ControlPort 9051
+CookieAuthentication 0
+HashedControlPassword 16:FA9FED70DB6AEDE160DE15E9F1CEAE70DEA72B7D4505DC10782FF21AF3
+```
+To easily get the hash, use the tor command :
+```
+$ tor --hash-password EXAMPLE_PASSWORD
+```
+And in your Python code :
+```python
+toro.authenticate(method='password', port=9051, password='EXAMPLE_PASSWORD')
+```
 
 ### Auth : Socket
 
-> TODO
+Another way to communicate with the controller is using a Control socket (**torrc**) :
+```
+ControlSocket /home/user/.tor/control.socket
+```
+Totoro can connect this way :
+```python
+toro.authenticate(method='socket', socket="/home/user/.tor/control.socket")
+```
 
 ## Documentation
 
-### Totoro
-Main object
+### Totoro(`nowarning=False`)
+Creates the main object.
 
-> TODO
+By default you'll get warnings on *stdout/stderr* when you perform an HTTPS request with `verify=False`. To eliminate the warnings you can pass `nowarning=True`. Behind the scene it simply does : `urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)`
 
-### Totoro.connect()
-Connection to Tor service
+### Totoro.connect(`host, port`)
+Connects to a Tor service. Call it only if you're connecting to an external instance. If you use the classic approach with **start()**, it creates a Tor process and does everything for you.
 
-> TODO
+<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+```python
+toro.connect(host='127.0.0.1', port=9050)
+```
+Returns True or False.
 
-### Totoro.start()
+### Totoro.start(`socks_port=9050, control_port=9051, tor_binary=None, password=None`)
+Starts a Tor process. That's the traditional way of using Totoro.
 
-> TODO
+<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+
+The start process is as follow :
+
+- Choose a password to limit access to the future controller :
+	- If a **password** is provided, use it ;
+	- If not, generate a random [a-zA-Z0-9]{25} password.
+- Compute the hash of the password :
+	- If the **tor_binary** path is provided (`/usr/bin/tor`), use the binary to get the hashed password ;
+	- If not, compute the hash with the OpenPGP S2K algorithm.
+- Start the Tor process, and use **socks_port** and **control_port** to configure this newly created instance.
+
+```python
+# If ports 9050 and 9051 are available, keep it simple :
+toro.start()
+```
+Returns True or False.
 
 ### Totoro.status()
+Returns the status of Tor service by checking the connectivity with its Control Port/Socket and Socks port.
+```python
+if toro.status():
+    print('Service available')
+```
+Returns True or False.
 
-> TODO
+### Totoro.stop(`kill=False`)
+Stops the previously created Tor process.
 
-### Totoro.stop()
+By default it sends a *SIGTERM* signal to the process. You can brutally kill it with `kill=True`.
+```python
+toro.stop()
+```
 
-> TODO
+Returns True or False.
 
-### Totoro.require_vpn()
+### Totoro.require_vpn(`choice=True`)
+Enables or disables the "VPN Strict Mode".
 
-> TODO
+When enabled, your requests will fail if you're not connected to a VPN tunnel.
+```python
+toro.require_vpn()
+```
+During the script execution you may want to enable/disable this behavior. You can use the parameter to change the setting.
+```python
+toro.require_vpn(False)
+```
 
 ### Totoro.vpn_status()
+Checks if the system is connected to a VPN.
 
-> TODO
+It basically checks your **tun0** interface and routes associated.
+```python
+if toro.vpn_status():
+    print('VPN connection : OK')
+```
+
+Returns True or False.
 
 ### Totoro.ipinfo()
+Performs a direct and a Tor request and returns your IP information.
 
-> TODO
+It uses the [IP Geolocation](https://ipgeolocation.io/) service.
+```python
+toro.ipinfo()
+# {
+#     'direct': {
+#         'ip': 'xx.xx.xx.xx',
+#         'hostname': 'XXXX.abo.wanadoo.fr',
+#         'country_code2': 'FR',
+#         'country_code3': 'FRA',
+#         'country_name': 'France',
+#         'state_prov': 'Ile-de-France',
+#         'district': '',
+#         'city': 'Montmorency',
+#         'zipcode': 'ZZZZZ',
+#         'latitude': 'XXX',
+#         'longitude': 'XXX',
+#         'security': {
+#             'threat_score': 0,
+#             'is_tor': False,
+#             'is_proxy': False,
+#             'proxy_type': '',
+#             'is_anonymous': False,
+#             'is_known_attacker': False,
+#             'is_cloud_provider': False
+#         }
+#     },
+#     'tor': {
+#         'ip': '199.249.230.82',
+#         'hostname': 'tor29.quintex.com',
+#         'country_code2': 'US',
+#         'country_code3': 'USA',
+#         'country_name': 'United States',
+#         'state_prov': 'Texas',
+#         'district': '',
+#         'city': 'San Angelo',
+#         'zipcode': 'ZZZZZ',
+#         'latitude': 'XXX',
+#         'longitude': 'XXX',
+#         'security': {
+#             'threat_score': 7,
+#             'is_tor': True,
+#             'is_proxy': False,
+#             'proxy_type': ' ',
+#             'is_anonymous': True,
+#             'is_known_attacker': False,
+#             'is_cloud_provider': False
+#         }
+#     }
+# }
+```
+The returned dictionary is composed by :
 
-### Totoro.dirreq()
+ - a `direct` attribute if you're not connected to a VPN ;
+ - a `vpn` attribute if you're connected to a VPN ;
+ - a `tor` attribute if you're connected to Tor network.
 
-> TODO
+See the [IP Geolocation API](https://ipgeolocation.io/documentation/ip-geolocation-api.html) for information on the returned JSON object.
 
-### Totoro.torreq()
+### Totoro.dirreq(`[...], session=None`)
+Performs a direct request (with your official public connection).
 
-> TODO
+Use it exactly as you'd use the [requests.request](https://requests.readthedocs.io/en/master/api/) method. You must pass the `method` parameter to specify the HTTP verb.
+```python
+sess, resp = toro.dirreq('GET', 'https://google.com')
+```
+Returns a tuple composed by the Session object and Response.
 
-### Totoro.authenticate()
+The `session` parameter may be passed to reuse a Session from a previous request (and persist data like cookies).
 
-> TODO
+Why this method ? Why not using directly requests without Totoro for this purpose? You're right. The only advantage of this method compared to standard *requests.method()* is that you can benefit from the VPN Strict Mode and the fake User-Agent.
+
+### Totoro.torreq(`[...], session=None`)
+Performs a request over the Tor network.
+
+The same as above, you may use it like [requests.request](https://requests.readthedocs.io/en/master/api/). It automatically adds the proxies settings to use Tor.
+```python
+sess, resp = toro.torreq('GET', 'https://google.com')
+```
+Returns a tuple composed by the Session object and Response.
+
+The `session` parameter may be passed to reuse a Session from a previous request (and persist data like cookies).
+
+In practice you'll use the below helpers...
+
+### get(), post(), put(), patch(), delete(), options(), head()
+Helpers to make it more user-friendly. It's the same you can use with *requests*.
+
+All these methods send the request over Tor. They redirect all the parameters to the **torreq()** method.
+```python
+sess, resp = toro.get('https://example.com/admin', cookies={'PHPSESSID':'XXXXXX'})
+sess, resp = toro.post('https://example.com/login', data={'username':'admin', 'password':'admin'})
+# [...]
+```
+Then it also returns a tuple with (Session, Response), and you may pass the `session` parameter as well.
+
+### Totoro.authenticate(`method=None, port=None, socket=None, password=None`)
+Sets the authentication parameters and instantiate the connection to the controller. Call it only if you're connecting to an external instance.
+
+<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+
+Parameters :
+
+ - **method** : specify the authentication method (None, `cookie`, `socket`, `password`)
+ - **port** : controller port (required **except** if `method="socket"`)
+ - **socket** : socket path (required **only** if `method="socket"`)
+ - **password** : authentication password (**only** if `method="password"`)
+
+See the section "*Authenticate to the Controller*" for more details.
+
+Returns True or False.
 
 ### Totoro.controller()
-The controller object is an instance of [stem.control.Controller](https://stem.torproject.org/api/control.html).
+Returns the controller object. It is an instance of [stem.control.Controller](https://stem.torproject.org/api/control.html).
 
 Totoro just uses it to change the identity, but you may want to do more...
 ```python
@@ -155,9 +382,18 @@ print('Circuit Status :')
 print(ctrl.get_info('circuit-status'))
 ```
 
-### Totoro.change_identity()
+### Totoro.change_identity(`sync=False`)
+Requests a new identity (and likely a new IP address).
 
-> TODO
+By default it just sends a NEWNYM signal to Tor controller and don't wait. That means it's not synchronous and it may take a few seconds for the new identity to be effective.
+```python
+toro.change_identity()
+```
+You may want to wait until the new identity is OK :
+```python
+toro.change_identity(sync=True)
+```
+<u>Caution</u> : it may blocks the script during several seconds.
 
 ### Exceptions
 Sometimes an exception can be raised by the Totoro engine.
@@ -165,4 +401,5 @@ Sometimes an exception can be raised by the Totoro engine.
  - **TotoroException** : different reasons, generally when you provide incorrect parameters to Totoro methods (see the error message for more information) ;
  - **TorNotRunningTotoroException** : you tried to send a request through Tor but Tor is not running ;
  - **VPNNotConnectedTotoroException** : you tried to send a request while VPN Strict Mode is enable, and your VPN connection seems to be broken.
+
 
