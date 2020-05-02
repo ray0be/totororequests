@@ -186,7 +186,7 @@ By default you'll get warnings on *stdout/stderr* when you perform an HTTPS requ
 ### Totoro.connect(`host, port`)
 Connects to a Tor service. Call it only if you're connecting to an external instance. If you use the classic approach with **start()**, it creates a Tor process and does everything for you.
 
-<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+Note: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
 ```python
 toro.connect(host='127.0.0.1', port=9050)
 ```
@@ -195,7 +195,7 @@ Returns True or False.
 ### Totoro.start(`socks_port=9050, control_port=9051, tor_binary=None, password=None`)
 Starts a Tor process. That's the traditional way of using Totoro.
 
-<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+Note: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
 
 The start process is as follow :
 
@@ -355,7 +355,7 @@ Then it also returns a tuple with (Session, Response), and you may pass the `ses
 ### Totoro.authenticate(`method=None, port=None, socket=None, password=None`)
 Sets the authentication parameters and instantiate the connection to the controller. Call it only if you're connecting to an external instance.
 
-<u>Note</u>: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
+Note: You **MUST** use *start()* **OR** *connect()+authenticate()*, **NOT** both.
 
 Parameters :
 
@@ -393,7 +393,7 @@ You may want to wait until the new identity is OK :
 ```python
 toro.change_identity(sync=True)
 ```
-<u>Caution</u> : it may blocks the script during several seconds.
+Caution : it may block the script during several seconds.
 
 ### Exceptions
 Sometimes an exception can be raised by the Totoro engine.
