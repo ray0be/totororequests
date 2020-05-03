@@ -21,7 +21,7 @@ Ensure you have Tor installed on your system :
  - Debian based : `apt install tor`
  - Fedora based : `yum install tor`
 
-Then install Totoro : `pip install totororequests`
+Then install Totoro : `pip3 install totororequests`
 
 ### Example #1 : run a Tor process
 In this example we use Totoro in the easiest way. Totoro will run Tor in a new process and generate a random password to protect the controller from being accessed outside the Python script context.
