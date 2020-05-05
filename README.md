@@ -352,6 +352,57 @@ sess, resp = toro.post('https://example.com/login', data={'username':'admin', 'p
 ```
 Then it also returns a tuple with (Session, Response), and you may pass the `session` parameter as well.
 
+### Totoro.annoy(`url, times=1, threads=10, sync=False`)
+Send `times` requests to `url` and immediately drops them (without waiting for response).
+
+Consequences : As HTTP is over the TCP protocol, a TCP handshake needs to be performed. When using this method you'll start the handshake and cancel it instantly. It will just tickle / SYN flood the remote server.
+
+Change `threads` param to control the number of threads used to send the fake requests.
+
+When using `sync=True`, the requests are sent synchronously, and it blocks your script.
+
+```python
+toro.annoy('https://example.com', times=100)
+```
+
+Note : Do not use it to generate fake logs because it won't work. Use *make_noise()* instead.
+
+### Totoro.make_noise(`urls, times=1, threads=10, shuffle=False, sync=False`)
+Sends a series of HTTP requests, `times` times, in parallel threads and without waiting for responses.
+
+Each request is complete (unlike with the *annoy()* method) so it appears in the accesslog of the remote server and you may use it to generate fake logs.
+
+The `urls` parameter must be a list of URL to fetch, in the following formats :
+
+ - Just the URL (default to GET verb) : `https://example.com/admin`
+ - Verb + [space] + URL : `POST https://example.com/admin`
+
+When using `shuffle=True` :
+
+ - The total number of sent requests is `times` (it sends `times` times a random request from the list) ;
+ - The requests are sent in whatever order, and randomly picked.
+
+When using `shuffle=False` :
+
+ - The total number of sent requests is `times * len(urls)` (it sends `times` times the entire list of requests) ;
+ - The requests are sent in the order of the list ;
+ - There is no assurance that they are received in exact same order (and generally won't).
+
+For instance, this instruction :
+```python
+toro.make_noise([
+    'https://example.com/',
+    'https://example.com/favicon.ico',
+    'GET https://example.com/css/bootstrap.min.css',
+    'GET https://example.com/js/jquery.min.js',
+    'POST https://example.com/login',
+    'DELETE https://example.com/user/15/avatar'
+], times=15, shuffle=True)
+```
+...will send 15 requests, randomly picked from the `urls` list.
+
+When using `sync=True`, the requests are sent synchronously, and it blocks your script.
+
 ### Totoro.authenticate(`method=None, port=None, socket=None, password=None`)
 Sets the authentication parameters and instantiate the connection to the controller. Call it only if you're connecting to an external instance.
 
@@ -402,4 +453,9 @@ Sometimes an exception can be raised by the Totoro engine.
  - **TorNotRunningTotoroException** : you tried to send a request through Tor but Tor is not running ;
  - **VPNNotConnectedTotoroException** : you tried to send a request while VPN Strict Mode is enable, and your VPN connection seems to be broken.
 
+## Changelog
 
+Version history :
+
+ - 1.1.0 - New methods : *annoy()* and *make_noise()*
+ - 1.0.0 - Initial version of Totoro

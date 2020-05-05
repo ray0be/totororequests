@@ -17,6 +17,8 @@ import time
 import subprocess
 import socket
 
+from multiprocessing.dummy import Pool
+
 import requests
 import requests.adapters
 import fake_useragent
@@ -443,6 +445,104 @@ class Totoro:
     def head(self, *args, **kwargs):
         """Sends a HEAD request"""
         return self.torreq('HEAD', *args, **kwargs)
+
+    # =======================================================================
+    #       NOISY REQUESTS
+    # =======================================================================
+
+    def annoy(self, url, times=1, threads=10, sync=False):
+        """Sends a request and immediatly drops it ({times} times). The purpose
+        is to send the requests without waiting for the responses.
+        
+        Consequences : As HTTP is over the TCP protocol, a TCP handshake needs
+        to be performed. Using this method you'll start the handshake and
+        cancel it instantly. It will just tickle the remote server.
+        
+        Caution : Do not use it to generate fake logs because it won't work.
+        Use make_noise() instead.
+        """
+
+        pool = Pool(threads)
+        futures = []
+
+        def fake_request(url):
+            try:
+                self.get(url, timeout=0.0000000001)
+            except:
+                pass
+
+        for i in range(times):
+            futures.append(pool.apply_async(fake_request, args=[url]))
+
+        if sync:
+            for future in futures:
+                __ = future.get()
+
+    def make_noise(self, urls, times=1, threads=10, shuffle=False, sync=False):
+        """Sends a series of requests, {times} times, in parallel threads and
+        without waiting for HTTP responses.
+
+        It may be used to generate fake logs on a web server.
+
+        The 'urls' parameter must be a list of URL to fetch.
+        Each element in the list may contain the HTTP verb in front of the URL,
+        or only the URL (default is method GET in this case) :
+            [
+                'https://example.com/',
+                'GET https://example.com/main.css',
+                'GET https://example.com/jquery.min.js',
+                'POST https://example.com/admin.php'
+            ]
+
+        When using shuffle=True :
+            - total number of requests is {times}
+            - requests are sent in whatever order, and randomly picked
+        When using shuffle=False :
+            - total number of requests is {times}*len(urls)
+            - requests are sent in the order of the list
+            - there is no assurance that they are received in exact same order
+        """
+
+        if type(urls) is not list:
+            raise TotoroException('Param urls must be a list of URLs')
+
+        def peelit(full):
+            # Extracts the method and url from a string like this:
+            # "GET https://example.com/"
+            method = 'GET'
+            exploded = full.split(' ')
+
+            if len(exploded) == 1:
+                url = exploded[0]
+            elif len(exploded) == 2:
+                method = exploded[0]
+                url = exploded[1]
+            else:
+                raise TotoroException(
+                    'Either your URLs list is empty, or one of them contains '
+                    + 'whitespaces (please encode them)')
+
+            return method, url
+
+        pool = Pool(threads)
+        futures = []
+
+        for i in range(times):
+            if shuffle:
+                method, url = peelit(random.choice(urls))
+                futures.append(
+                    pool.apply_async(self.torreq, args=[method, url])
+                )
+            else:
+                for j in range(len(urls)):
+                    method, url = peelit(urls[j])
+                    futures.append(
+                        pool.apply_async(self.torreq, args=[method, url])
+                    )
+
+        if sync:
+            for future in futures:
+                __ = future.get()
 
     # =======================================================================
     #       TOR CONTROLLER
