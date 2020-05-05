@@ -19,7 +19,7 @@ Basically it adds an abstract layer on top of the *stem* module and combines it 
 Ensure you have Tor installed on your system :
 
  - Debian based : `apt install tor`
- - Fedora based : `yum install tor`
+ - RHEL based : `yum install tor`
 
 Then install Totoro : `pip3 install totororequests`
 
