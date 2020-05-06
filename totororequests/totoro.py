@@ -16,8 +16,7 @@ import random
 import time
 import subprocess
 import socket
-
-from multiprocessing.dummy import Pool
+import multiprocessing.dummy
 
 import requests
 import requests.adapters
@@ -462,7 +461,7 @@ class Totoro:
         Use make_noise() instead.
         """
 
-        pool = Pool(threads)
+        pool = multiprocessing.dummy.Pool(threads)
         futures = []
 
         def fake_request(url):
@@ -474,9 +473,11 @@ class Totoro:
         for i in range(times):
             futures.append(pool.apply_async(fake_request, args=[url]))
 
+        pool.close()
+
         if sync:
             for future in futures:
-                __ = future.get()
+                future.wait()
 
     def make_noise(self, urls, times=1, threads=10, shuffle=False, sync=False):
         """Sends a series of requests, {times} times, in parallel threads and
@@ -524,25 +525,35 @@ class Totoro:
 
             return method, url
 
-        pool = Pool(threads)
+        pool = multiprocessing.dummy.Pool(threads)
         futures = []
 
         for i in range(times):
             if shuffle:
                 method, url = peelit(random.choice(urls))
                 futures.append(
-                    pool.apply_async(self.torreq, args=[method, url])
+                    pool.apply_async(
+                        self.torreq,
+                        args=[method, url],
+                        kwds={'timeout':5}
+                    )
                 )
             else:
                 for j in range(len(urls)):
                     method, url = peelit(urls[j])
                     futures.append(
-                        pool.apply_async(self.torreq, args=[method, url])
+                        pool.apply_async(
+                            self.torreq,
+                            args=[method, url],
+                            kwds={'timeout':5}
+                        )
                     )
+
+        pool.close()
 
         if sync:
             for future in futures:
-                __ = future.get()
+                future.wait()
 
     # =======================================================================
     #       TOR CONTROLLER
