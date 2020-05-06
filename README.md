@@ -367,7 +367,7 @@ toro.annoy('https://example.com', times=100)
 
 Note : Do not use it to generate fake logs because it won't work. Use *make_noise()* instead.
 
-### Totoro.make_noise(`urls, times=1, threads=10, shuffle=False, sync=False`)
+### Totoro.make_noise(`urls, times=1, threads=10, shuffle=False, sync=False, timeout=5`)
 Sends a series of HTTP requests, `times` times, in parallel threads and without waiting for responses.
 
 Each request is complete (unlike with the *annoy()* method) so it appears in the accesslog of the remote server and you may use it to generate fake logs.
@@ -402,6 +402,8 @@ toro.make_noise([
 ...will send 15 requests, randomly picked from the `urls` list.
 
 When using `sync=True`, the requests are sent synchronously, and it blocks your script.
+
+Change the `timeout` param to set a timeout (in seconds) for each request in the thread pool.
 
 ### Totoro.authenticate(`method=None, port=None, socket=None, password=None`)
 Sets the authentication parameters and instantiate the connection to the controller. Call it only if you're connecting to an external instance.
@@ -457,5 +459,6 @@ Sometimes an exception can be raised by the Totoro engine.
 
 Version history :
 
+ - 1.1.1 & 1.1.2 - Optimization on thread methods (annoy & make_noise) : proper pool closure, requests timeout, better and more elegant code
  - 1.1.0 - New methods : *annoy()* and *make_noise()*
  - 1.0.0 - Initial version of Totoro

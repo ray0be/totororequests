@@ -464,14 +464,14 @@ class Totoro:
         pool = multiprocessing.dummy.Pool(threads)
         futures = []
 
-        def fake_request(url):
-            try:
-                self.get(url, timeout=0.0000000001)
-            except:
-                pass
-
         for i in range(times):
-            futures.append(pool.apply_async(fake_request, args=[url]))
+            futures.append(
+                pool.apply_async(
+                    self.get,
+                    args=[url],
+                    kwds={'timeout':0.0000000001}
+                )
+            )
 
         pool.close()
 
@@ -479,7 +479,8 @@ class Totoro:
             for future in futures:
                 future.wait()
 
-    def make_noise(self, urls, times=1, threads=10, shuffle=False, sync=False):
+    def make_noise(self, urls, times=1, threads=10,
+                   shuffle=False, sync=False, timeout=5):
         """Sends a series of requests, {times} times, in parallel threads and
         without waiting for HTTP responses.
 
@@ -535,7 +536,7 @@ class Totoro:
                     pool.apply_async(
                         self.torreq,
                         args=[method, url],
-                        kwds={'timeout':5}
+                        kwds={'timeout':timeout}
                     )
                 )
             else:
@@ -545,7 +546,7 @@ class Totoro:
                         pool.apply_async(
                             self.torreq,
                             args=[method, url],
-                            kwds={'timeout':5}
+                            kwds={'timeout':timeout}
                         )
                     )
 
