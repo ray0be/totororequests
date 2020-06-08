@@ -385,7 +385,10 @@ class Totoro:
             sess.mount('https://', requests.adapters.HTTPAdapter(max_retries=2))
 
         # Select a random User-Agent
-        headers['User-Agent'] = fake_useragent.UserAgent().random
+        default_ua = ('Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36')
+        ua = fake_useragent.UserAgent(fallback=default_ua)
+        headers['User-Agent'] = ua.random
 
         # Send
         resp = sess.request(
@@ -452,11 +455,11 @@ class Totoro:
     def annoy(self, url, times=1, threads=10, sync=False):
         """Sends a request and immediatly drops it ({times} times). The purpose
         is to send the requests without waiting for the responses.
-        
+
         Consequences : As HTTP is over the TCP protocol, a TCP handshake needs
         to be performed. Using this method you'll start the handshake and
         cancel it instantly. It will just tickle the remote server.
-        
+
         Caution : Do not use it to generate fake logs because it won't work.
         Use make_noise() instead.
         """

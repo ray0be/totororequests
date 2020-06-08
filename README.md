@@ -459,6 +459,7 @@ Sometimes an exception can be raised by the Totoro engine.
 
 Version history :
 
+ - 1.1.3 - Added default User-Agent (fallback) to avoid exceptions when it's not possible to fetch the list from internet
  - 1.1.1 & 1.1.2 - Optimization on thread methods (annoy & make_noise) : proper pool closure, requests timeout, better and more elegant code
  - 1.1.0 - New methods : *annoy()* and *make_noise()*
  - 1.0.0 - Initial version of Totoro

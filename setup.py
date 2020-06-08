@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="totororequests",
-    version="1.1.2",
+    version="1.1.3",
     author="Victor Paynat-Sautivet",
     author_email="contact@ray0.be",
     description="Smart Python module for sending HTTP(S) requests through Tor network",
