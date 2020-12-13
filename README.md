@@ -31,7 +31,7 @@ In this example we use Totoro in the easiest way. Totoro will run Tor in a new p
 from totororequests import Totoro
 
 # Get Totoro
-toro = Totoro(nowarning=True)
+toro = Totoro()
 
 # Start Tor process
 if toro.start():
@@ -65,7 +65,7 @@ In this example we connect Totoro to a running instance of Tor, potentially not 
 
 from totororequests import Totoro
 
-toro = Totoro(nowarning=True)
+toro = Totoro()
 
 # Connect to Tor already-running service
 if toro.connect(host='127.0.0.1', port=9050):
@@ -178,10 +178,10 @@ toro.authenticate(method='socket', socket="/home/user/.tor/control.socket")
 
 ## Documentation
 
-### Totoro(`nowarning=False`)
+### Totoro(`warnings=False`)
 Creates the main object.
 
-By default you'll get warnings on *stdout/stderr* when you perform an HTTPS request with `verify=False`. To eliminate the warnings you can pass `nowarning=True`. Behind the scene it simply does : `urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)`
+By default you'll NOT get warnings on *stdout/stderr* when you perform an HTTPS request with `verify=False`. To make the warnings appear you can pass `warnings=True`. Behind the scene it simply does : `urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)`
 
 ### Totoro.connect(`host, port`)
 Connects to a Tor service. Call it only if you're connecting to an external instance. If you use the classic approach with **start()**, it creates a Tor process and does everything for you.
@@ -386,7 +386,7 @@ When using `shuffle=False` :
 
  - The total number of sent requests is `times * len(urls)` (it sends `times` times the entire list of requests) ;
  - The requests are sent in the order of the list ;
- - There is no assurance that they are received in exact same order (and generally won't).
+ - There is no guarantee that they are received in exact same order (and generally won't).
 
 For instance, this instruction :
 ```python
@@ -459,6 +459,7 @@ Sometimes an exception can be raised by the Totoro engine.
 
 Version history :
 
+ - 1.2.0 - Added dependencies in setup.py, hid SSL warnings by default, improved newnym request behavior, and made Totoro compatible with requests to _.onion_ domains
  - 1.1.3 - Added default User-Agent (fallback) to avoid exceptions when it's not possible to fetch the list from internet
  - 1.1.1 & 1.1.2 - Optimization on thread methods (annoy & make_noise) : proper pool closure, requests timeout, better and more elegant code
  - 1.1.0 - New methods : *annoy()* and *make_noise()*

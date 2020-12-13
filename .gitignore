@@ -4,3 +4,4 @@ dist/
 *.egg
 __pycache__
 *.pyc
+test.py

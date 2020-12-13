@@ -112,7 +112,7 @@ class Totoro:
     is already running, maybe on another host.
     """
 
-    def __init__(self, nowarning=False):
+    def __init__(self, warnings=False):
         # Tor host
         self._host = None        # Tor host
 
@@ -136,7 +136,7 @@ class Totoro:
         self._vpn_required = False
 
         # Display https Warnings ?
-        if nowarning:
+        if not warnings:
             import urllib3
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -414,8 +414,8 @@ class Totoro:
 
         # Set Socks proxy
         proxies = {
-            'http': 'socks5://' + self._host + ':' + str(self._service['port']),
-            'https': 'socks5://' + self._host + ':' + str(self._service['port'])
+            'http': 'socks5h://' + self._host + ':' + str(self._service['port']),
+            'https': 'socks5h://' + self._host + ':' + str(self._service['port'])
         }
 
         return self._send_request(*args, **kwargs, proxies=proxies)
@@ -640,8 +640,9 @@ class Totoro:
         Two behaviours :
             - with sync=False : send the signal and continue (it may take few
                 seconds to get the new identity)
-            - with sync=True : send the signal and wait until you get the new
-                identity (will block the script with time.sleep())
+            - with sync=True : wait until the controller accepts a newnym signal
+                and then send the signal to request the new identity
+                (will block the script with time.sleep())
 
         It's recommended to use it asynchronously unless you have a specific
         need.
@@ -649,10 +650,11 @@ class Totoro:
         ctrl = self.controller()
 
         if ctrl:
-            ctrl.signal(stem.Signal.NEWNYM)
             if sync:
                 while not ctrl.is_newnym_available():
                     time.sleep(ctrl.get_newnym_wait())
+
+            ctrl.signal(stem.Signal.NEWNYM)
 
             return ctrl.get_info('circuit-status')
 
